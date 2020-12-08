@@ -7,21 +7,27 @@ var stock_search;
 let api_search;
 let api_url;
 let symbol;
-let api_graph;
+let api_Weekly;
+var date = [];
+var money =[];
+var myChart;
 
+function clear() {
+    date = [];
+    money = [];
+}
 
-
-function makeGraph() {
-    var ctx = document.getElementById('graph').getContext('2d');
+function makeGraph() { 
+    const ctx = document.getElementById('graph').getContext('2d');
     ctx.canvas.width = 25;
     ctx.canvas.heigth = 10;
-    var myChart = new Chart(ctx, {
+    myChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+            labels: date,
             datasets: [{
                 label: 'Price of Stock',
-                data: [12, 19, 3, 5, 2, 3],
+                data: money,
                 backgroundColor: [
                     'rgba(128, 80, 90, .8)',
                     'rgba(54, 162, 235, 0.2)',
@@ -58,20 +64,43 @@ function makeGraph() {
             }
         }
     });
+    
 }
 
-async function get_sym() {
+
+function addData(chart, label, values) {
+    var i;
+    for(i = 0; i < label.length; i++){
+    myChart.data.labels.push(label[i]);
+    myChart.data.datasets.forEach((dataset) => {
+        dataset.data.push(values[i]);
+    });
+
+  }
+
+  console.log(myChart.data.labels);
+    
+}
+
+//arrays to hold money and dates from json
+
+async function get_sym(myChart) {
     const response = await fetch(api_search);
     const stock_data = await response.json();
     symbol = stock_data.bestMatches[0]["1. symbol"]
     api_url = api_pre_search + symbol + api_post;
-    stock_graph();
-    //stock_Data(api_url);
+    console.log(api_search);
+    await stock_Weekly();
+    console.log(date);
+    console.log(money);
+    await stock_Data(api_url);
+    makeGraph();
+    //addData(myChart,date,money);
     //console.log(symbol);
-    
 }
 
 function getSearch() {
+    clear();
     stock_search = document.getElementById("stockSearch").value;
     api_search = api_pre_sym + stock_search +api_post;
     get_sym();
@@ -79,10 +108,17 @@ function getSearch() {
 
 
 
-//5 requests per minute and 500 requests a day
+//5 requests per minute and 500 requests a day,
+//!!!------------------------------------------!!!
+//!!MUST HAVE 12 SECONDS BETWEEN CALLS OR BREAKS!!
+//!!!------------------------------------------!!!
+
 async function stock_Data(api_url) {
+    console.log("getting data",api_url);
     const response = await fetch(api_url);
+    console.log("response",response);
     const stock_data = await response.json();
+    console.log("json",stock_data);
     const stock_open = stock_data["Global Quote"]["02. open"]
     const stock_price = stock_data["Global Quote"]["05. price"]
     const stock_vol = stock_data["Global Quote"]["06. volume"]
@@ -91,31 +127,25 @@ async function stock_Data(api_url) {
     document.getElementById('price_stock').textContent = stock_price; 
     document.getElementById('volume').textContent = stock_vol;                    
 }
- let key_pre;
-async function stock_graph() {
-    api_graph = api_pre_graph + symbol + api_post;
-    const response = await fetch(api_graph);
+
+
+async function stock_Weekly() {
+    var i;
+    api_Weekly = api_pre_graph + symbol + api_post;
+    const response = await fetch(api_Weekly);
     const stock_data = await response.json();
-    const data = stock_data;
-    var array = ["test"];
-    Object.keys(stock_data["Weekly Time Series"]["2020-03-19"]).forEach(function(key) {
-        key_pre ='"' + key +'"';
-        array.push(key_pre);
-        console.table('Key : ' + key );
-      })
-
-      console.log(array[1]);
-     
-     /* Object.keys(data[Weekly]).forEach(function(key) {
-        key_pre ='"' + key +'"';
-        console.table('Key : ' + key );
-      })
-
-      */
-    //const stock_graph = stock_data["Weekly Time Series"]["2020-03-19"];
-    
-
+    const dates = Object.keys(stock_data["Weekly Time Series"]);
+    for( i = 0; i < 10; i++) {
+        date.push(dates[i]);
+        money.push(stock_data["Weekly Time Series"][dates[i]]["4. close"]);
+    }
 }
+
+
+
+
+// attempt at DOM listening, sorta worked, wrong tool needed
+
 
 //attempt to modify id= "name" <STOCK> when it loads, but couldnt get it to work properly.
 // Wanted to decrease time seen by user of swithcing text when API data is recieved.
@@ -136,14 +166,4 @@ async function stock_graph() {
     
   });
   */
-  //however, this did console log when stock_Data() changed id=name, when mutationObserver.observer(document.getElementbyID) was set.
-
-
-//functions calls to get API data and change HTML
-//5 requests per minute and 500 requests a day
-
-
-makeGraph();
-
-
-
+  //however, this did console log when stock_Data() changed id=name, when mutationObserver.observer(document.getElementbyID) 
